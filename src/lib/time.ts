@@ -204,6 +204,14 @@ export function formatClock(ms: number, timeZone: string, hour12: boolean) {
   return `${hour}:${minute} ${suffix}`;
 }
 
+export function formatClockRange(startMs: number, endMs: number, timeZone: string, hour12: boolean) {
+  const start = formatClock(startMs, timeZone, hour12);
+  const end = formatClock(endMs, timeZone, hour12);
+  // "5:30–6:30 pm" rather than "5:30 pm–6:30 pm" when both ends share the suffix.
+  if (hour12 && start.slice(-2) === end.slice(-2)) return `${start.slice(0, -3)}–${end}`;
+  return `${start}–${end}`;
+}
+
 export function formatHourLabel(hour: number, minute: number, hour12: boolean) {
   if (!hour12) {
     return minute === 0 ? String(hour) : `${hour}:${String(minute).padStart(2, "0")}`;

@@ -4,7 +4,7 @@ import { memo, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type
 import { displayName, type City } from "@/lib/cities";
 import { t } from "@/lib/i18n";
 import type { Place } from "@/lib/settings";
-import { formatClock, formatLongDate, formatOffset, nextDstChange, slotIndexAt, type Cell, type Locale } from "@/lib/time";
+import { formatClockRange, formatLongDate, formatOffset, nextDstChange, slotIndexAt, type Cell, type Locale } from "@/lib/time";
 import { LiveStamp } from "@/components/live-stamp";
 import { useNow } from "@/lib/use-now";
 
@@ -66,7 +66,16 @@ export function HourGrid({
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [metrics, setMetrics] = useState<Metrics>({ cellLeft: 148, stride: 46, ruler: 44 });
-  const drag = useRef<{ pointerId: number; index: number; half: number; x: number; y: number; moved: boolean; mouse: boolean } | null>(null);
+  const drag = useRef<{
+    pointerId: number;
+    index: number;
+    half: number;
+    x: number;
+    y: number;
+    moved: boolean;
+    mouse: boolean;
+    move: { grab: number; startHalf: number; endHalf: number } | null;
+  } | null>(null);
   const resize = useRef<{ pointerId: number; edge: "start" | "end" } | null>(null);
 
   useLayoutEffect(() => {
@@ -110,12 +119,17 @@ export function HourGrid({
 
   const halfMs = 30 * 60_000;
 
-  function halfFromClient(clientX: number) {
+  function rawHalfFromClient(clientX: number) {
     const inner = scrollerRef.current?.querySelector(".grid-inner");
     if (!inner || metrics.stride <= 0 || slots.length === 0) return null;
     const x = clientX - inner.getBoundingClientRect().left - metrics.cellLeft;
-    const half = Math.round(x / (metrics.stride / 2));
-    return Math.max(0, Math.min(slots.length * 2, half));
+    return x / (metrics.stride / 2);
+  }
+
+  function halfFromClient(clientX: number) {
+    const raw = rawHalfFromClient(clientX);
+    if (raw == null) return null;
+    return Math.max(0, Math.min(slots.length * 2, Math.round(raw)));
   }
 
   function selectHalves(from: number, to: number) {
@@ -153,6 +167,17 @@ export function HourGrid({
     const index = indexFrom(event.target);
     const half = halfFromClient(event.clientX);
     if (index == null || half == null || (event.pointerType === "mouse" && event.button !== 0)) return;
+    // A press inside the current range grabs it, so dragging moves it instead of starting a new one.
+    const raw = rawHalfFromClient(event.clientX);
+    const origin = slots[0];
+    let move: { grab: number; startHalf: number; endHalf: number } | null = null;
+    if (selection && raw != null && origin != null) {
+      const startHalf = Math.round((selection.startUtc - origin) / halfMs);
+      const endHalf = Math.round((selection.endUtc - origin) / halfMs);
+      if (raw >= startHalf && raw < endHalf && startHalf >= 0 && endHalf <= slots.length * 2) {
+        move = { grab: raw, startHalf, endHalf };
+      }
+    }
     drag.current = {
       pointerId: event.pointerId,
       index,
@@ -161,6 +186,7 @@ export function HourGrid({
       y: event.clientY,
       moved: false,
       mouse: event.pointerType === "mouse",
+      move,
     };
   }
 
@@ -178,6 +204,15 @@ export function HourGrid({
       current.moved = true;
     }
     event.currentTarget.setPointerCapture(event.pointerId);
+    if (current.move) {
+      const raw = rawHalfFromClient(event.clientX);
+      if (raw == null) return;
+      const length = current.move.endHalf - current.move.startHalf;
+      const shifted = current.move.startHalf + Math.round(raw - current.move.grab);
+      const start = Math.max(0, Math.min(slots.length * 2 - length, shifted));
+      selectHalves(start, start + length);
+      return;
+    }
     const half = halfFromClient(event.clientX);
     if (half != null) selectHalves(current.half, half);
   }
@@ -189,9 +224,8 @@ export function HourGrid({
     if (current.moved) return;
     const travel = Math.abs(event.clientX - current.x) + Math.abs(event.clientY - current.y);
     if (travel > (current.mouse ? 4 : 12)) return;
-    const mark = (slots[0] ?? 0) + current.half * halfMs;
-    const inside = selection != null && mark >= selection.startUtc && mark < selection.endUtc;
-    if (!inside) onClear();
+    // A plain click or tap picks that hour; inside the current range it leaves it as is.
+    if (!current.move) onSelectSpan(current.index, current.index);
   }
 
   function onRulerPointer(event: PointerEvent<HTMLDivElement>, phase: "down" | "move" | "up") {
@@ -354,13 +388,18 @@ const CityRow = memo(function CityRow({
         className={`city-label ${isHome ? "is-home" : ""}`}
         onClick={() => onOpen(row.place.uid)}
       >
-        <span className="truncate text-sm font-semibold">{name}</span>
-        {selection && (
-          <span className="mt-0.5 block truncate text-xs font-semibold tabular-nums">
-            {formatClock(selection.startUtc, row.city.tz, hour12)}–{formatClock(selection.endUtc, row.city.tz, hour12)}
-          </span>
+        <span className="block truncate text-sm font-semibold">{name}</span>
+        {selection ? (
+          <>
+            <span className="picked-range">{formatClockRange(selection.startUtc, selection.endUtc, row.city.tz, hour12)}</span>
+            <span className="mt-1 block truncate text-[11px] leading-4 text-muted-foreground">
+              {formatLongDate(selection.startUtc, row.city.tz, locale)}
+            </span>
+            <LiveStamp timeZone={row.city.tz} homeTz={homeTz} locale={locale} hour12={hour12} compact />
+          </>
+        ) : (
+          <LiveStamp timeZone={row.city.tz} homeTz={homeTz} locale={locale} hour12={hour12} />
         )}
-        <LiveStamp timeZone={row.city.tz} homeTz={homeTz} locale={locale} hour12={hour12} />
         <span className="mt-1 flex flex-wrap gap-1">
           <DstNote timeZone={row.city.tz} locale={locale} />
           {!row.place.included && <span className="meta-pill">{t(locale, "outside")}</span>}

@@ -5,7 +5,7 @@ const es = {
   searchPlaceholder: "Añadir ciudad o zona",
   searchEmpty: "Ninguna ciudad coincide.",
   suggested: "Sugeridas",
-  hint: "Arrastra sobre las horas para marcar el rango. El amarillo es horario laboral.",
+  hint: "Toca una hora para elegirla o arrastra para marcar un rango. El amarillo es horario laboral.",
   dismiss: "Entendido",
   overlapAll: "Todos en horario laboral: {range} ({city})",
   overlapSome: "Mejor hueco: {count} de {total} · {range} ({city})",
@@ -25,6 +25,8 @@ const es = {
   calendar: "Calendar",
   ics: ".ics",
   clear: "Quitar",
+  clearSelection: "Quitar selección",
+  selectionLabel: "Horario elegido",
   earlier: "−30 min",
   later: "+30 min",
   dst: "Cambio de hora el {date} · {from} → {to}",
@@ -70,7 +72,7 @@ const en: typeof es = {
   searchPlaceholder: "Add a city or time zone",
   searchEmpty: "No cities match.",
   suggested: "Suggested",
-  hint: "Drag across the hours to mark a range. Yellow means working hours.",
+  hint: "Click an hour to pick it, or drag to mark a range. Yellow means working hours.",
   dismiss: "Got it",
   overlapAll: "Everyone is in working hours: {range} ({city})",
   overlapSome: "Best window: {count} of {total} · {range} ({city})",
@@ -90,6 +92,8 @@ const en: typeof es = {
   calendar: "Calendar",
   ics: ".ics",
   clear: "Clear",
+  clearSelection: "Clear selection",
+  selectionLabel: "Picked time",
   earlier: "−30 min",
   later: "+30 min",
   dst: "Clocks change on {date} · {from} → {to}",
@@ -158,10 +162,11 @@ export function weekendNames(days: number[], locale: Locale) {
 }
 
 export function durationLabel(minutes: number, locale: Locale) {
-  if (minutes % 60 === 0) {
-    const hours = minutes / 60;
-    return locale === "es" ? `${hours} h` : hours === 1 ? "1 hr" : `${hours} hr`;
-  }
-  if (minutes === 90) return locale === "es" ? "1.5 h" : "1.5 hr";
-  return `${minutes} min`;
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const amount = rest === 0 ? String(hours) : `${hours}:${String(rest).padStart(2, "0")}`;
+  const single = hours === 1 && rest === 0;
+  if (locale === "es") return `${amount} ${single ? "hora" : "horas"}`;
+  return `${amount} ${single ? "hour" : "hours"}`;
 }

@@ -250,20 +250,16 @@ export function Board() {
             </div>
           )}
 
-          {board.selection ? (
-            <SelectionBar board={board} people={people} />
-          ) : (
-            <DateStrip
-              day={board.day}
-              homeTz={homeTz}
-              locale={locale}
-              onDay={(next) => {
-                setAnchor(null);
-                patch((prev) => ({ ...prev, day: next }));
-              }}
-              onNow={jumpToday}
-            />
-          )}
+          <DateStrip
+            day={board.day}
+            homeTz={homeTz}
+            locale={locale}
+            onDay={(next) => {
+              setAnchor(null);
+              patch((prev) => ({ ...prev, day: next }));
+            }}
+            onNow={jumpToday}
+          />
 
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             <Legend swatch="work" label={t(locale, "legendWork")} />
@@ -324,6 +320,8 @@ export function Board() {
           onOpen={onOpen}
         />
       )}
+
+      {board.selection && <SelectionBar board={board} people={people} homeTz={homeTz} homeName={homeLabel} onClear={onClear} />}
 
       {editingPlace && editingCity && (
         <PlaceDialog

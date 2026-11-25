@@ -330,6 +330,12 @@
   height: 3.65rem;
   border-radius: 8px;
 }
+.tile {
+  cursor: pointer;
+}
+.tile[aria-pressed="true"] {
+  cursor: grab;
+}
 .tile-date,
 .tile-mark {
   position: absolute;
@@ -492,6 +498,29 @@
   height: 10px;
   border-radius: 99px;
   background: var(--terra);
+}
+.picked-range {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 500;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.selection-dock {
+  flex: none;
+  border-top: 1px solid var(--line);
+  background: var(--card);
+  padding: 0.6rem 0.75rem max(0.6rem, env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 20px -16px rgb(0 0 0 / 45%);
+}
+@media (min-width: 768px) {
+  .selection-dock {
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+  }
 }
 .meta-pill,
 .dst-pill {

@@ -16,13 +16,22 @@ export const LiveStamp = memo(function LiveStamp({
   homeTz,
   locale,
   hour12,
+  compact = false,
 }: {
   timeZone: string;
   homeTz: string;
   locale: Locale;
   hour12: boolean;
+  compact?: boolean;
 }) {
   const now = useNow();
+  if (compact) {
+    return (
+      <span className="block truncate text-[11px] leading-4 text-muted-foreground tabular-nums">
+        {t(locale, "now")} {formatClock(now, timeZone, hour12)}
+      </span>
+    );
+  }
   const cityDay = todayKey(timeZone, now);
   const homeDay = todayKey(homeTz, now);
   const diff = dayDiff(cityDay, homeDay);
